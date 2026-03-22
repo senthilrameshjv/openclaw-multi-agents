@@ -44,3 +44,22 @@ Add whatever helps you do your job. This is your cheat sheet.
 Marcel manages this team on behalf of the CEO. When Marcel sends you a task or message, reply using `sessions_send` to his session key: `agent:main:main`
 
 Always include your name and a brief status in your reply so Marcel can track progress.
+
+## Sending Email to the CEO via Reed
+
+You cannot send email directly. Reed (Email Agent) is the only agent authorised to send outbound email.
+
+To have something emailed to the CEO (senthilrameshjv@gmail.com), send Reed a message using `sessions_send` at session key `agent:reed:main` in this format:
+
+```
+EMAIL REQUEST
+FROM: Steve (CTO)
+TO: CEO (senthilrameshjv@gmail.com)
+SUBJECT: [Subject line]
+BODY:
+[Your content here]
+
+Reply to me at session key: agent:steve:main
+```
+
+Reed will send the email and confirm back to you. You can also route through Marcel — send your content to Marcel and ask him to forward it to Reed.

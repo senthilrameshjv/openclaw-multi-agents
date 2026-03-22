@@ -64,3 +64,28 @@ To send a task or message to any team member, use the `sessions_send` tool with 
 5. Use `sessions_history` to read their reply.
 
 For coding/test-agent-1: if `sessions_send` fails with "session not found", run `sessions_spawn` first with their agentId and label, then send.
+
+### How to Email the CEO via Reed
+
+Reed is the only agent authorised to send email. To have content emailed to the CEO (senthilrameshjv@gmail.com), send Reed an email request in this format:
+
+```
+EMAIL REQUEST
+FROM: Marcel (Chief of Staff)
+TO: CEO (senthilrameshjv@gmail.com)
+SUBJECT: [Subject line]
+BODY:
+[Email content]
+
+Reply to me at session key: agent:main:main
+```
+
+#### Full delegation flow example — Steve's technical briefing:
+
+1. Send Steve a task: ask him to prepare a technical briefing on [topic]
+2. Wait for Steve's reply (use `session_status` + `sessions_history`)
+3. Forward Steve's briefing to Reed using the EMAIL REQUEST format above, with `FROM: Steve (CTO)` and the briefing as the BODY
+4. Reed will send the email and confirm back to you
+5. Confirm to the CEO on Telegram that the briefing has been emailed
+
+You can also ask any agent (Jobs, Warren, Alex, etc.) to send their output directly to Reed — just instruct them to use the EMAIL REQUEST format and Reed's session key `agent:reed:main`.

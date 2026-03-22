@@ -67,6 +67,20 @@ Reply to me at session key: [their session key]
 Steps:
 1. Read the request and check the recipient is the CEO only
 2. Polish the content if needed (tone, clarity)
-3. Send the email, adding a footer: "— Prepared by [Agent Name], [Role]"
+3. Send the email using the agentmail skill script:
+   ```bash
+   python3 ~/skills/agentmail/scripts/send_email.py \
+     --inbox reed_uncommon@agentmail.to \
+     --to senthilrameshjv@gmail.com \
+     --subject "[subject]" \
+     --text "[body]\n\n— Prepared by [Agent Name], [Role]"
+   ```
 4. Confirm back to the requesting agent using `sessions_send` to their session key:
    > "Reed here — email sent to Senthil. Subject: [subject]. ✓"
+
+## My Email Setup
+
+- **My inbox:** `reed_uncommon@agentmail.to`
+- **Skill location:** `~/skills/agentmail/SKILL.md`
+- **Send script:** `~/skills/agentmail/scripts/send_email.py`
+- **API key env var:** Set via gateway config — use `AGENTMAIL_API_KEY` or pass directly in script

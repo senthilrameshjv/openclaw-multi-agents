@@ -1,26 +1,38 @@
 ---
 name: OpenClaw Agents Configuration
-description: The 3 agents on the server — their models, Telegram accounts, workspaces, and soul files
+description: All 8 agents on the server — models, Telegram accounts, workspaces, session keys, inter-agent comms
 type: project
 ---
 
-Three agents configured on the server:
+8 agents configured on the server:
 
-| Agent | Model | Telegram Account | Workspace |
-|---|---|---|---|
-| `main` (default) | `nvidia/nemotron-3-super-120b-a12b:free` | `default` (bot: `8739994026:...`) | `/root/.openclaw/workspace` |
-| `coding` | `openrouter/qwen/qwen3-coder:free` | `coding-account` (bot: `8768891581:...`) | `/root/.openclaw/workspace-coding` |
-| `test-agent-1` | `stepfun/step-3.5-flash:free` | `test-agent-1` (bot: `8678091358:...`) | `/root/.openclaw/workspace-test-agent-1` |
+| Agent | Name | Model | Session Key | Workspace |
+|---|---|---|---|---|
+| `main` | Marcel | `google/gemini-3-flash-preview` | `agent:main:main` | `/root/.openclaw/workspace` |
+| `coding` | Joseph | `openrouter/qwen/qwen3-coder:free` | `agent:coding:main` (spawn first) | `/root/.openclaw/workspace-coding` |
+| `test-agent-1` | Henry | `openrouter/stepfun/step-3.5-flash:free` | `agent:test-agent-1:main` (spawn first) | `/root/.openclaw/workspace-test-agent-1` |
+| `steve` | Steve | `openrouter/qwen/qwen3-next-80b-a3b-instruct:free` | `agent:steve:main` | `/root/.openclaw/workspace-steve` |
+| `jobs` | Jobs | `google/gemini-3-flash-preview` | `agent:jobs:main` | `/root/.openclaw/workspace-jobs` |
+| `warren` | Warren | `google/gemini-3-flash-preview` | `agent:warren:main` | `/root/.openclaw/workspace-warren` |
+| `alex` | Alex | `google/gemini-3-flash-preview` | `agent:alex:main` | `/root/.openclaw/workspace-alex` |
+| `reed` | Reed | `google/gemini-3-flash-preview` | `agent:reed:main` | `/root/.openclaw/workspace-reed` |
 
-**Routing:** `main` is default (no explicit binding). `coding` and `test-agent-1` have explicit telegram bindings in `openclaw.json`.
+**Telegram accounts:**
+- `default` → Marcel (bot: `8739994026:...`)
+- `coding-account` → Joseph (bot: `8768891581:...`)
+- `test-agent-1` → Henry (bot: `8678091358:...`)
+- Steve, Jobs, Warren, Alex, Reed have no Telegram binding (internal only)
 
-**Soul files:**
-- `main` → default OpenClaw template (restored from https://github.com/openclaw/openclaw/blob/main/docs/reference/templates/SOUL.md)
-- `coding` → custom "Senior Full-Stack Engineer / Self-Evolving Coder" soul (user-authored, v0.4)
-- `test-agent-1` → custom "Adversarial Tester" soul (written this session)
+**Marcel's role:** Chief of Staff / Orchestrator. Delegates to all other agents via `sessions_send`.
 
-**Identity:** main agent is named 🐚 DataRobot (set in IDENTITY.md)
+**Inter-agent comms:**
+- All agents reply to Marcel at `agent:main:main`
+- Email to CEO goes via Reed at `agent:reed:main` using EMAIL REQUEST format
+- Reed's inbox: `reed_uncommon@agentmail.to`
+- agentmail skill copied to Reed's workspace: `/root/.openclaw/workspace-reed/skills/agentmail/`
 
-**Why:** All models are free tier on OpenRouter. Models chosen based on role — nemotron-super for general, qwen3-coder for coding, step-3.5-flash for reasoning/QA.
+**OpenRouter API key hit USD spend limit** — Marcel switched to `google/gemini-3-flash-preview` which works. Avoid adding Claude/paid OpenRouter models to fallback list.
 
-**How to apply:** When changing models use mission control Agents → Settings tab, or `POST /ssh/agent/:id/model` on the proxy.
+**Repo:** https://github.com/senthilrameshjv/openclaw-multi-agents
+
+**How to apply:** Session keys for coding/test-agent-1 need `sessions_spawn` first before `sessions_send`. All others connect directly.

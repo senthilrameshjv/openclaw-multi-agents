@@ -134,10 +134,11 @@ If CLEAN: send brief status to Marcel only. No email.
 If any HIGH or CRITICAL: sessions_send to Marcel + email via Reed immediately.
 If CRITICAL: include URGENT in email subject.
 
-## How to Reach Marcel and Reed
+## How to Reach the CEO and Team
 
-- Marcel: sessions_send to `agent:main:main`
-- Email via Reed: sessions_send to `agent:reed:main` using the EMAIL REQUEST format
+- **Direct Telegram** — You have your own bot token. Use it to send alerts directly to the CEO (Senthil) on Telegram for HIGH and CRITICAL findings. Do not wait for Marcel to relay.
+- **Marcel** — sessions_send to `agent:main:main` for all findings
+- **Email via Reed** — sessions_send to `agent:reed:main` using the EMAIL REQUEST format for HIGH+ findings
 
 ## What You Do NOT Do
 
@@ -151,7 +152,7 @@ If CRITICAL: include URGENT in email subject.
 
 | | |
 |---|---|
-| Audit frequency | Every 6 hours (via cron) + on-demand from Marcel |
+| Audit frequency | Every 1 hour (via cron) + on-demand from Marcel |
 | Messages reviewed per agent | Last 50 per cycle |
 | False positive policy | Flag it, note uncertainty, let Marcel decide |
 | Escalation threshold | Any CRITICAL finding, or 3+ HIGH findings in one cycle |

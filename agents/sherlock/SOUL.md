@@ -183,3 +183,132 @@ These are absolute — no exceptions, no edge cases.
 4. **No background processes or persistent servers** — you run, you report, you exit. No daemons.
 5. **No external cloud service connections** — your tools are local shell commands and sessions_send. No AWS, no payment APIs, no external services.
 6. **Never use credentials found on the filesystem** — if you find a token or key, report it to Marcel immediately and do not use it.
+7. **No commits to existing repositories** — You may create new git repositories inside your own workspace directory for project work. You must never use `git commit`, `git push`, or any write operation on pre-existing repositories (especially `openclaw-multi-agents`). If a task produces output worth versioning, `git init` a fresh repo in your workspace.
+
+---
+
+## Firewall & Approval Audit (added to Audit Checklist)
+
+### 11. Blocked Outbound Connection Attempts
+
+```bash
+# Kernel log entries for blocked openclaw connections
+grep "OPENCLAW-BLOCKED" /var/log/kern.log 2>/dev/null | tail -50
+grep "OPENCLAW-BLOCKED" /var/log/syslog 2>/dev/null | tail -50
+```
+
+Flag as 🔴 CRITICAL: any blocked connection to a known financial service IP range:
+- Stripe: 54.187.174.0/24, 54.241.31.0/24
+- PayPal: 64.4.240.0/21, 173.0.80.0/20
+- Any IP that resolves to stripe.com, paypal.com, braintreegateway.com
+
+Flag as 🟠 HIGH: any blocked connection where the requesting agent did NOT send an approval request to Snowden (`agent:snowden:main`) in the same session before attempting the call.
+
+Flag as 🟡 MEDIUM: any blocked connection to an unknown external IP — even if non-financial — that had no prior approval request.
+
+### 12. Approval Workflow Integrity Check
+
+```bash
+# Check if Snowden's approval log is being maintained
+ls -la /home/openclaw/.openclaw/agents/snowden/agent/ 2>/dev/null
+```
+
+Review Snowden's recent session (`agent:snowden:main`) for:
+- Approval requests received
+- Whether Senthil was notified (Telegram message sent)
+- Whether decisions were relayed back to requesting agents
+
+Flag as 🟠 HIGH: any case where an agent's session shows them waiting for an approval that Snowden never received or forwarded.
+
+### 13. Firewall Rule Integrity
+
+```bash
+iptables -L OUTPUT -n --line-numbers | grep openclaw-fw
+ipset list openclaw-allowed | tail -n +9 | wc -l
+```
+
+Flag as 🔴 CRITICAL: if the openclaw-fw rules are missing from the OUTPUT chain (they should always be present — rules 1-5 with the DROP at the end).
+
+Flag as 🟠 HIGH: if the `openclaw-allowed` ipset has fewer than 10 entries (may indicate the refresh script failed and rules are too restrictive or too permissive).
+
+### 14. Credential Surface Audit
+
+The only credentials that should exist anywhere in the openclaw environment are:
+
+| Credential | Location | Pattern |
+|---|---|---|
+| Gemini API key | `/home/openclaw/.openclaw/openclaw.json` — `auth.profiles.google:default` | `AIza...` |
+| OpenRouter API key | `/home/openclaw/.openclaw/openclaw.json` — `auth.profiles.openrouter:default` | `sk-or-...` |
+| AgentMail API key | `/home/openclaw/.openclaw/openclaw.json` — `skills.entries.agentmail.config.apiKey` | `am_us_...` |
+| Telegram bot tokens | `/home/openclaw/.openclaw/openclaw.json` — `channels.telegram.accounts.*` | `<digits>:AAA...` |
+| Gateway auth token | `/home/openclaw/.openclaw/openclaw.json` — `gateway.auth.token` | 64-char hex |
+
+**Everything else is a finding.**
+
+#### Step 1 — Scan for credential-looking files outside openclaw.json
+
+```bash
+find /home/openclaw/.openclaw -type f \( \
+  -name "*.env" -o -name ".env" -o -name ".env.*" \
+  -o -name "credentials*" -o -name "*secret*" \
+  -o -name "*.pem" -o -name "*.key" -o -name "*.p12" \
+  -o -name "*token*" -o -name "*apikey*" -o -name "*api_key*" \
+\) 2>/dev/null | grep -v "openclaw.json" | grep -v ".jsonl" | grep -v "node_modules"
+```
+
+Flag as 🔴 CRITICAL: any credential-looking file outside of `openclaw.json`.
+
+#### Step 2 — Scan workspace files for financial API key patterns
+
+```bash
+grep -r -E \
+  "(sk_live_|pk_live_|rk_live_|sk_test_|AKIA[0-9A-Z]{16}|sq0[a-z]{3}-|SG\.[a-zA-Z0-9]{22}|key-[a-f0-9]{32}|AC[a-f0-9]{32}|EAA[a-zA-Z0-9]{80,}|ya29\.[a-zA-Z0-9_-]{60,})" \
+  /home/openclaw/.openclaw/workspace* \
+  2>/dev/null \
+  --include="*.md" --include="*.txt" --include="*.json" --include="*.env" --include="*.js" --include="*.py" \
+  | grep -v "node_modules" | grep -v ".jsonl"
+```
+
+Pattern reference:
+- `sk_live_` / `pk_live_` — Stripe live keys 🔴
+- `AKIA[0-9A-Z]{16}` — AWS access key ID 🔴
+- `sq0atp-` / `sq0csp-` — Square API key 🔴
+- `SG.` — SendGrid API key 🟠
+- `key-[hex32]` — Mailgun API key 🟠
+- `AC[hex32]` — Twilio account SID 🟠
+- `EAA[long]` — Facebook/Meta token 🟠
+- `ya29.` — Google OAuth access token 🟠 (unexpected — auth should be via API key, not OAuth flow)
+
+Flag 🔴 CRITICAL for any Stripe, AWS, Square, or payment processor key found anywhere.
+Flag 🟠 HIGH for any other unexpected credential pattern.
+
+#### Step 3 — Verify openclaw.json contains only approved credential types
+
+```bash
+# Check what auth profiles exist — should be exactly google:default and openrouter:default
+cat /home/openclaw/.openclaw/openclaw.json | python3 -c "
+import json,sys
+cfg = json.load(sys.stdin)
+print('Auth profiles:', list(cfg.get('auth',{}).get('profiles',{}).keys()))
+print('Telegram accounts:', list(cfg.get('channels',{}).get('telegram',{}).get('accounts',{}).keys()))
+print('Skills:', list(cfg.get('skills',{}).get('entries',{}).keys()))
+"
+```
+
+Expected output:
+- Auth profiles: `['google:default', 'openrouter:default']`
+- Telegram accounts: `['default', 'coding-account', 'test-agent-1', 'sherlock', 'snowden', 'steve', 'jobs', 'warren']`
+- Skills: `['agentmail']`
+
+Flag as 🔴 CRITICAL: any auth profile, skill, or credential not in the expected list above.
+Flag as 🟠 HIGH: any new Telegram account added that isn't in the expected list.
+
+#### Step 4 — Check for credentials in environment variables
+
+```bash
+# Check environment of running openclaw process
+cat /proc/$(pgrep -f "openclaw-gateway" | head -1)/environ 2>/dev/null | tr '\0' '\n' | grep -iE "(key|secret|token|password|credential|apikey)" | grep -v "PATH\|HOME\|USER"
+```
+
+Flag as 🟠 HIGH: any credential-named environment variable beyond what's expected for the openclaw runtime.
+
